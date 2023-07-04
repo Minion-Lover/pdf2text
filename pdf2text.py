@@ -37,11 +37,18 @@ args = parser.parse_args()
 file = args.pdf_file
 user_id = args.user_id
 
+# file = "WeekofDec23,2022MVAOPRA.pdf"
+# user_id = "1"
 
 doc = ap.Document(file)
 
 file = check_rotation(file)
 
+
+# if "/" in file:
+#     output_name = file[:-4].replace("/", "_")
+# elif "\\" in file:
+#     output_name = file[:-4].replace("\\", "_")
 output_name = os.path.splitext(os.path.basename(file))[0].replace("/", "_").replace("\\", "_")
 
 pdf = fitz.open(file)
@@ -106,16 +113,16 @@ def get_upper_boxes_text(page):
     page.set_cropbox(fitz.Rect(537, 22, 580, 110))
 
     text = page.get_text()
-    print(text, 'text____')
+    # print(text, 'text____')
     text = re.sub("[^0-9-\n]", "", text).split("\n")
-    print(text, 'text+____final')
-    print(len(text), 'text_____length')
+    # print(text, 'text+____final')
+    # print(len(text), 'text_____length')
     boxes = list(filter(None, text))
-    print(len(boxes), 'boxes')
+    # print(len(boxes), 'boxes')
 
     while len(boxes) < 4:
         boxes.append("|---|")
-    print(boxes, 'append boxes')
+    # print(boxes, 'append boxes')
 
     
     return boxes
@@ -128,43 +135,51 @@ def get_driver_text(page, driver):
         page.set_cropbox(fitz.Rect(293, 150, 545, 224))
 
     text = page.get_text().rstrip().strip().split("\n")
-    print(text, 'text')
+    # print(text, 'text')
+
+    # if len(set(text[0])) == 1:
+    #     print('if len')
+    #     return ["Unknown", "Unknown"]
 
     if text == [""]:
-        print('if drive')
+        # print('if drive')
         return ["Unknown", "Unknown"]
 
     if any("unknown" in item.lower() for item in text):
         driver = ["Unknown", "Unknown"]
-        print('if unkonwn')
+        # print('if unkonwn')
     else:
         if len(text) > 8:
-            print('if else')
+            # print('if else')
             driver = [" ".join([text[7], text[8]]), ", ".join([text[6]])]
-            print(driver, 'Name____DRIVE')
+            # print(driver, 'Name____DRIVE')
         elif len(text) > 6:
             driver = [" ".join([text[6], text[3]]), ", ".join([text[5]])]
-            print(driver, 'Name____DRIVE')
+            # print(driver, 'Name____DRIVE')
         elif len(text) > 5:
             driver = [" ".join([text[5], text[3]]), ", ".join([text[5]])]
-            print(driver, 'Name____DRIVE')   
+            # print(driver, 'Name____DRIVE')   
         elif len(text) > 4:
             driver = [" ".join([text[5], text[3]]), ", ".join([text[5]])]
-            print(driver, 'Name____DRIVE')   
+            # print(driver, 'Name____DRIVE')   
         elif len(text) > 3:
             driver = [" ".join([text[5], text[3]]), ", ".join([text[5]])]
-            print(driver, 'Name____DRIVE') 
+            # print(driver, 'Name____DRIVE') 
         elif len(text) > 2:
             driver = [" ".join([text[5], text[3]]), ", ".join([text[5]])]
-            print(driver, 'Name____DRIVE')   
+            # print(driver, 'Name____DRIVE')   
     if isinstance(driver, int):
         driver = ["----", "----"]  # Assign a default value when driver is an integer
-        print(driver, ' driver is integer')
+        # print(driver, ' driver is integer')
     else:
         for n in range(len(driver)):
             if driver[n].count("-") > 8:
                 driver[n] = "----"
-                print(driver[n], ' driver[n]')               
+                # print(driver[n], ' driver[n]')               
+    # for n in range(len(driver)):
+    #     if driver[n].count("-") > 15:
+    #         driver[n] = "----"
+    #         print( driver[n], ' driver[n]')
 
     return driver
 
@@ -173,7 +188,7 @@ def get_occupants_text(page):
     page.set_cropbox(fitz.Rect(335, 620, 580, 760))
 
     text = page.get_text().rstrip().split("\n")
-    print(text, 'text_____occupants')
+    # print(text, 'text_____occupants')
 
     occupants = [element for element in text if check_for_dash(element)]
     
@@ -184,7 +199,7 @@ def get_occupants_text(page):
 
     while len(occupants) < 4:
         occupants.append("|---|")
-    print(occupants, 'occupants__appened')    
+    # print(occupants, 'occupants__appened')    
 
     return occupants if occupants else []
 
@@ -213,6 +228,9 @@ def pdf_to_text(pdf):
 
         driver_two = get_driver_text(page, 2)
 
+        # cities = get_driver_one_ocr(page, page_size, 1)
+        # print(cities, 'cities___')
+
         occupants = get_occupants_text(page)
 
         case = {
@@ -236,7 +254,11 @@ def pdf_to_text(pdf):
             case["Occupant 1"] = occupants[0]
         if len(occupants) >= 2:
             case["Occupant 2"] = occupants[1]
-            print(case["Occupant 2"], 'case["Occupant 2"]')
+            # print(case["Occupant 2"], 'case["Occupant 2"]')
+        # if len(occupants) >= 2:
+        #     occupant_info = occupants[1].split("-")[1] if len(occupants[1].split("-")) > 1 else ""
+        #     case["Occupant 2"] = occupant_info
+        #     print(case["Occupant 2"], 'case["Occupant 2"]')
     
         if len(occupants) >= 3:
             case["Occupant 3"] = occupants[2]
@@ -244,7 +266,7 @@ def pdf_to_text(pdf):
             case["Occupant 4"] = occupants[3]    
 
         if len(boxes) >= 7:
-            print('case 7')
+            # print('case 7')
             case7 = case.copy()
             case7["118a"] = boxes[2] if len(boxes) >= 7 and boxes[2] != "----" else "--"
             case7["118b"] = boxes[3] if len(boxes) >= 7 and boxes[3] != "----" else "--"
@@ -253,7 +275,7 @@ def pdf_to_text(pdf):
             case_dict[case_count] = case7
 
         elif len(boxes) >= 6:
-            print('case 6')
+            # print('case 6')
             case6 = case.copy()
             case6["118a"] = boxes[1] if len(boxes) >= 6  and boxes[1] != "----" else "--"
             case6["118b"] = boxes[2] if len(boxes) >= 6 and boxes[2] != "----" else "--"
@@ -262,7 +284,7 @@ def pdf_to_text(pdf):
             case_dict[case_count] = case6
 
         elif len(boxes) >= 5:
-            print('case 5')
+            # print('case 5')
             case5 = case.copy()
             case5["118a"] = boxes[0] if len(boxes) >= 5 and boxes[0] != "----" else "--"
             case5["118b"] = boxes[1] if len(boxes) >= 5 and boxes[1] != "----" else "--"
@@ -274,15 +296,21 @@ def pdf_to_text(pdf):
 
 def check_pdf(page, reader, page_size):
     if page_size == 1:
-        page.set_cropbox(fitz.Rect(180, 36, 300, 72))
+        # page.set_cropbox(fitz.Rect(160, 20, 400, 50))
+        # page.set_cropbox(fitz.Rect(63, 160, 315, 252))
+        page.set_cropbox(fitz.Rect(180, 20, 300, 72))
     elif page_size == 2:
         page.set_cropbox(fitz.Rect(738, 144, 765, 300))
-    print(page_size)
+    # print(page_size)
     pix = page.get_pixmap(dpi=300)
     pix.save("page-0.png")
 
     image = cv2.imread("page-0.png")
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    # (h, w) = gray.shape
+    # if h > w:
+    #     gray = cv2.rotate(gray, cv2.ROTATE_90_COUNTERCLOCKWISE)
+
 
     pdf_check = reader.readtext(gray, decoder="greedy", detail=0, paragraph=False, rotation_info=[90])
 
@@ -294,7 +322,8 @@ def check_pdf(page, reader, page_size):
 
 def get_date_ocr(page, reader, page_size):
     if page_size == 1:
-        page.set_cropbox(fitz.Rect(70, 100, 130, 135))
+        # page.set_cropbox(fitz.Rect(70, 100, 130, 135))
+        page.set_cropbox(fitz.Rect(70, 100, 150, 155))
     elif page_size == 2:
         page.set_cropbox(fitz.Rect(710, 185, 735, 390))
 
@@ -329,7 +358,8 @@ def get_date_ocr(page, reader, page_size):
 
 def get_boxes_ocr(page, reader, page_size):
     if page_size == 1:
-        page.set_cropbox(fitz.Rect(537, 22, 568, 105))
+        # page.set_cropbox(fitz.Rect(537, 22, 568, 105))
+        page.set_cropbox(fitz.Rect(537, 22, 598, 115))
     elif page_size == 2:
         page.set_cropbox(fitz.Rect(635, 540, 730, 570))
 
@@ -340,380 +370,42 @@ def get_boxes_ocr(page, reader, page_size):
     box_ocr = reader.readtext(
         image,
         decoder="greedy",
-        detail=0,
-        paragraph=True,
+        # detail=0,
+        # paragraph=True,
         y_ths=0.1,
+        x_ths=0.1,
         allowlist="ab1234567890-",
-        rotation_info=[90],
     )
     processed_boxes = []
-
-    while len(box_ocr) < 4:
-        box_ocr.append("---")
-
-    for item in range(4):
-        if " " in box_ocr[item]:
-            space_index = box_ocr[item].index(" ")
-            processed_boxes.append(box_ocr[item][space_index + 1 :][:2])
-        else:
-            processed_boxes.append("|---|")
-            box_ocr[item] = "--"
-
+    
+    height_max = 0
+    update_text_box = []
+    for each_box in box_ocr:
+        bbox, text,_ = each_box
+        x_min, y_min, x_max, y_max = bbox
+        height = y_max[1] - y_min[1]
+        if height_max < height:
+            height_max = height
+        update_text_box.append((height, text))
+    text_flag = 0
+    for s in update_text_box:
+        if s[0] > height_max - 5:
+            text_flag = text_flag + 1
+            processed_boxes.append(s[1])
+        if text_flag >= 2:
+            break
+    while text_flag < 4:           
+        text_flag = text_flag + 1
+        processed_boxes.append("|---|")
     return processed_boxes
 
 
-def get_driver_one_ocr(page, reader, page_size):
+def get_occupants_ocr(page, reader, page_size
+                    #   , driver_one, driver_two
+                      ):
     if page_size == 1:
-        page.set_cropbox(fitz.Rect(62, 153, 280, 226))
-    elif page_size == 2:
-        page.set_cropbox(fitz.Rect(539, 52, 613, 290))
-
-    pix = page.get_pixmap(dpi=400)
-    pix.save("png/driver_1-%i.png" % page.number)
-
-    image = cv2.imread("png/driver_1-%i.png" % page.number)
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    thresh = cv2.threshold(gray, 0, 127, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
-
-    driver_one = reader.readtext(
-        thresh, decoder="greedy", detail=0, paragraph=True, x_ths=0.95, rotation_info=[90]
-    )
-    # Finds "Dri" or "ver" (driver) in the OCRd image. then will go to that index and find the index for "na" (name)
-    # Then it grabs the rest of the string as the first name.
-    # Does the same for last name.
-    if any("Dri" in s for s in driver_one) or any("ver" in s for s in driver_one):
-        for i in range(len(driver_one)):
-            if "Dri" in driver_one[i] or "ver" in driver_one[i]:
-                first_index = driver_one.index(driver_one[i])
-                first_name_list = driver_one[first_index].split(" ")
-
-                for i in range(len(first_name_list)):
-                    if "na" in first_name_list[i].lower():
-                        name_index = first_name_list.index(first_name_list[i])
-                        first_name = " ".join(first_name_list[name_index + 1 :])
-                        if not first_name:
-                            first_name = "--"
-                        break
-                    else:
-                        continue
-                break
-            else:
-                continue
-
-    # LAST NAME
-    last_index = 0
-    if any("Las" in s for s in driver_one) or any("Les" in s for s in driver_one):
-        for i in range(len(driver_one)):
-            if "las" in driver_one[i].lower() or "les" in driver_one[i].lower():
-                last_index = driver_one.index(driver_one[i])
-                last_name_list = driver_one[last_index].split(" ")
-
-                for i in range(len(last_name_list)):
-                    if "na" in last_name_list[i].lower():
-                        name_index = last_name_list.index(last_name_list[i])
-                        last_name = " ".join(last_name_list[name_index + 1 :])
-                        if "29" in last_name:
-                            last_name = " ".join(
-                                [
-                                    x
-                                    for x in last_name_list[name_index + 1 :]
-                                    if x.isupper()
-                                ]
-                            )
-                            if "29" in last_name:
-                                last_name_temp = last_name.split(" ")
-                                for j in range(len(last_name_temp)):
-                                    if "29" in last_name_temp[j]:
-                                        last_name_temp.remove(last_name_temp[j])
-                                        last_name = " ".join(last_name_temp)
-                                        break
-                                    else:
-                                        continue
-                            else:
-                                last_name = last_name
-                        if not last_name:
-                            last_name = "--"
-                        break
-                    else:
-                        continue
-                break
-            else:
-                continue
-    street_index = 0
-    address = ""
-    last_name_results = driver_one[last_index:]
-    # Finds Street N(umb)er
-    if any("umb" in s for s in last_name_results):
-        for i in range(len(last_name_results)):
-            if "umb" in last_name_results[i]:
-                address_index = last_name_results.index(last_name_results[i])
-                address_list = last_name_results[i].split(" ")
-
-                for i in range(len(address_list)):
-                    if (
-                        "str" in address_list[i].lower()
-                        or "eet" in address_list[i].lower()
-                    ):
-                        street_index = address_list.index(address_list[i])
-                        address = " ".join(address_list[street_index + 1 :])
-                        if not address:
-                            address = "--"
-                        break
-                    else:
-                        continue
-                break
-            else:
-                continue
-
-    address_results = last_name_results[street_index - 2 :]
-    if address_results == []: return []
-    if address in address_results[0] or "Sex" in address_results[0]:
-        address_results = last_name_results[street_index - 1 :]
-
-    for i in range(len(address_results)):
-        if "31" in address_results[i]:
-            address_results[i] = address_results[i].split("31", 1)[0]
-
-        if "28" in address_results[i] or "23" in address_results[i]:
-            if "30" in address_results[i]:
-                address_results[i] = address_results[i].split("30", 1)[0]
-            city_results = address_results[i].split(" ")
-
-            for n in range(len(city_results)):
-                if "28" in city_results[n] or "23" in address_results[i]:
-                    city_list = [x for x in city_results if x.isupper()]
-                    city = " ".join(city_list)
-                    if not city:
-                        city = "--"
-                    break
-        elif "ate" in address_results[i] or "Sta" in address_results[i]:
-            state_results = address_results[i].split(" ")
-            try:
-                state = state_results[1]
-                if state == "Zip":
-                    state = state_results[2]
-                    zip_code = state_results[3]
-            except:
-                state = "--"
-        elif "Zip" in address_results[i]:
-            zip_results = address_results[i].split(" ")
-            try:
-                zip_code = zip_results[1][:5]
-            except:
-                zip_code = "--"
-        driver_info = []
-
-    try:
-        driver_info.append(first_name)
-    except (UnboundLocalError, NameError):
-        driver_info.append("--")
-    try:
-        driver_info.append(last_name)
-    except (UnboundLocalError, NameError):
-        driver_info.append("--")
-    try:
-        driver_info.append(address)
-    except (UnboundLocalError, NameError):
-        driver_info.append("--")
-    try:
-        driver_info.append(city)
-    except (UnboundLocalError, NameError):
-        driver_info.append("--")
-    try:
-        driver_info.append(state)
-    except (UnboundLocalError, NameError):
-        driver_info.append("--")
-    try:
-        driver_info.append(zip_code)
-    except (UnboundLocalError, NameError):
-        driver_info.append("--")
-
-    while len(driver_info) < 2:
-        driver_info.append("---")
-    return driver_info
-
-
-def get_driver_two_ocr(page, reader, page_size):
-    if page_size == 1:
-        page.set_cropbox(fitz.Rect(297, 150, 545, 224))
-    elif page_size == 2:
-        page.set_cropbox(fitz.Rect(547, 300, 614, 540))
-
-    pix = page.get_pixmap(dpi=400)
-    pix.save("png/driver_2-%i.png" % page.number)
-
-    image = cv2.imread("png/driver_2-%i.png" % page.number)
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    thresh = cv2.threshold(gray, 0, 127, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
-
-    driver_two = reader.readtext(
-        thresh, decoder="greedy", detail=0, paragraph=True, x_ths=0.3, rotation_info=[90]
-    )
-
-    # FIRST NAME
-    if any("Dri" in s for s in driver_two) or any("ver" in s for s in driver_two):
-        for i in range(len(driver_two)):
-            if "Dri" in driver_two[i] or any("ver" in s for s in driver_two[i]):
-                first_index = driver_two.index(driver_two[i])
-                first_name_list = driver_two[first_index].split(" ")
-
-                for i in range(len(first_name_list)):
-                    if "na" in first_name_list[i].lower():
-                        name_index = first_name_list.index(first_name_list[i])
-                        first_name = " ".join(first_name_list[name_index + 1 :])
-                        if not first_name:
-                            first_name = "--"
-                        break
-                    else:
-                        continue
-                break
-            else:
-                continue
-
-    # LAST NAME
-    last_index = 0
-    if any("Las" in s for s in driver_two) or any("Les" in s for s in driver_two):
-        for i in range(len(driver_two)):
-            if "Las" in driver_two[i] or "Les" in driver_two[i]:
-                last_index = driver_two.index(driver_two[i])
-                last_name_list = driver_two[last_index].split(" ")
-
-                for i in range(len(last_name_list)):
-                    if "na" in last_name_list[i].lower():
-                        name_index = last_name_list.index(last_name_list[i])
-                        last_name = " ".join(last_name_list[name_index + 1 :])
-                        if "59" in last_name:
-                            last_name = " ".join(
-                                [
-                                    x
-                                    for x in last_name_list[name_index + 1 :]
-                                    if x.isupper()
-                                ]
-                            )
-                            if "59" in last_name:
-                                last_name_temp = last_name.split(" ")
-                                for j in range(len(last_name_temp)):
-                                    if "59" in last_name_temp[j]:
-                                        last_name_temp.remove(last_name_temp[j])
-                                        last_name = " ".join(last_name_temp)
-                                        break
-                                    else:
-                                        continue
-                            else:
-                                last_name = last_name
-                        if not last_name:
-                            last_name = "--"
-                        break
-                    else:
-                        continue
-                break
-            else:
-                continue
-
-    last_name_results = driver_two[last_index:]
-
-    if any("umb" in s for s in last_name_results):
-        for i in range(len(last_name_results)):
-            if "umb" in last_name_results[i]:
-                address_index = last_name_results.index(last_name_results[i])
-                address_list = last_name_results[i].split(" ")
-
-                for i in range(len(address_list)):
-                    if (
-                        "str" in address_list[i].lower()
-                        or "eet" in address_list[i].lower()
-                    ):
-                        street_index = address_list.index(address_list[i])
-                        address = " ".join(address_list[street_index + 1 :])
-                        if not address:
-                            address = "--"
-                        break
-                    else:
-                        continue
-                break
-            else:
-                continue
-    try:
-        address_results = last_name_results[street_index - 2 :]
-        if address_results == []:
-            return []
-        if address in address_results[0] or "Sex" in address_results[0]:
-            address_results = last_name_results[street_index - 1 :]
-    except (UnboundLocalError):
-        address_results = last_name_results[4:]
-
-    for i in range(len(address_results)):
-        if "61" in address_results[i]:
-            address_results[i] = address_results[i].split("61", 1)[0]
-
-        if (
-            "58" in address_results[i] or "68" in address_results[i]
-        ):  # or "23" in address_results[i]:
-            if "60" in address_results[i]:
-                address_results[i] = address_results[i].split("60", 1)[0]
-            city_results = address_results[i].split(" ")
-
-            for n in range(len(city_results)):
-                if "58" in city_results[n] or "68" in address_results[i]:
-
-                    # city_index = city_results.index(city_results[n])
-                    city_list = [x for x in city_results if x.isupper()]
-                    city = " ".join(city_list)
-                    if not city:
-                        city = "--"
-                    break
-        elif "ate" in address_results[i] or "Sta" in address_results[i]:
-            state_results = address_results[i].split(" ")
-            try:
-                state = state_results[1]
-                if state == "Zip":
-                    state = state_results[2]
-                    zip_code = state_results[3]
-            except:
-                state = "--"
-        elif "Zip" in address_results[i]:
-            zip_results = address_results[i].split(" ")
-            try:
-                zip_code = zip_results[1][:5]
-            except:
-                zip_code = "--"
-
-    driver_info = []
-
-    try:
-        driver_info.append(first_name)
-    except (UnboundLocalError, NameError):
-        driver_info.append("---")
-    try:
-        driver_info.append(last_name)
-    except (UnboundLocalError, NameError):
-        driver_info.append("---")
-    try:
-        driver_info.append(address)
-    except (UnboundLocalError, NameError):
-        driver_info.append("---")
-    try:
-        driver_info.append(city)
-    except (UnboundLocalError, NameError):
-        driver_info.append("---")
-    try:
-        driver_info.append(state)
-    except (UnboundLocalError, NameError):
-        driver_info.append("---")
-    try:
-        driver_info.append(zip_code)
-    except (UnboundLocalError, NameError):
-        driver_info.append("---")
-
-    while len(driver_info) < 2:
-        driver_info.append("---")
-
-    return driver_info
-
-
-def get_occupants_ocr(page, reader, page_size, driver_one, driver_two):
-    if page_size == 1:
-        page.set_cropbox(fitz.Rect(362, 615, 543, 707))
+        # page.set_cropbox(fitz.Rect(362, 615, 543, 707))
+        page.set_cropbox(fitz.Rect(352, 615, 553, 705)) 
     elif page_size == 2:
         page.set_cropbox(fitz.Rect(50, 310, 160, 540))
 
@@ -721,40 +413,104 @@ def get_occupants_ocr(page, reader, page_size, driver_one, driver_two):
     pix.save("png/occupants-%i.png" % page.number)
 
     image = cv2.imread("png/occupants-%i.png" % page.number)
-    occupants = reader.readtext(image, decoder="greedy", detail=0, paragraph=True, rotation_info=[90])
+    occupants = reader.readtext(image,
+         decoder="greedy", 
+        #  detail=0, 
+         x_ths = 1,
+        #  paragraph=True, 
+         blocklist = ';:_',
+        #  rotation_info=[90]
+         )
+    # print(occupants,"\n")
 
-    if any("driver 1" in s.lower() for s in occupants):
-        occupants_ocr = reader.readtext(
-            image, decoder="greedy", detail=0, paragraph=True, y_ths=0.3, x_ths=30, rotation_info=[90]
-        )
+    occupants_boxes = []
+    
+    # print(box_ocr[1],"\n 1111111")
+    height_max = 0
+    update_text_box = []
+    for each_box in occupants:
+        bbox, text,_ = each_box
+        x_min, y_min, x_max, y_max = bbox
+        height = y_max[1] - y_min[1]
+        if height_max < height:
+            height_max = height
+        update_text_box.append((height, text))
+    # print(height_max)
+    if height_max < 55:
+        # print("1")
+        for i in range(2):
+            temp = []
+            for j in range(3):
+                temp.append("|--|")
+            occupants_boxes.append(temp)
+        print("//////////////",occupants_boxes)
+        return occupants_boxes
+    for s in update_text_box:
+        if s[0] > height_max - 20:
+            occupants_boxes.append(s[1])
+    # print(occupants_boxes,'\n')
 
-        for n in range(len(occupants_ocr)):
-            if (
-                "decea" in occupants_ocr[n].lower()
-                or "ased" in occupants_ocr[n].lower()
-                or "dere" in occupants_ocr[n].lower()
-            ):
-                occupants_ocr.remove(occupants_ocr[n])
-        if "driver 1" in occupants_ocr[n].lower():
-            occupants_ocr[n] = " ".join(driver_one)
-        if "driver 2" in occupants_ocr[n].lower():
-            occupants_ocr[n] = " ".join(driver_two)
+    temp = ""
+    result = []
+    for each_string in occupants_boxes:
+        if len(each_string) < 4:
+            temp += " " + each_string
+            result.append(temp)
+            temp = ""
+        else:
+            if temp == "":
+                temp = each_string
+                continue
+            else:
+                
+                if each_string[len(each_string) - 4: ].isdigit():
+                    temp += " " + each_string
+                    result.append(temp)
+                    temp = ""
+                else:
+                    result.append(temp)
+                    temp = each_string
+    
+    occupants_boxes = []
+    temp = []
+    for each_string in result:
+        work_string = each_string
+        last_name_end = work_string.find(",")
+        lastname = work_string[: last_name_end]
 
-        while len(occupants_ocr) < 4:
-            occupants_ocr.append("|---|")
-        return occupants_ocr
+        work_string = work_string[last_name_end + 1: ]
 
-    for i in range(len(occupants)):
-        if (
-            "decea" in occupants[0].lower()
-            or "ased" in occupants[0].lower()
-            or "dere" in occupants[0].lower()
-        ):
-            occupants.remove(occupants[0])
-    while len(occupants) < 4:
-        occupants.append("---")
+        first_name_end = work_string.find("-")
+        firstname = work_string[: first_name_end]
+        name = firstname + ' ' + lastname
+        
+        work_string = work_string[first_name_end + 1: ]
 
-    return occupants
+        street_end = work_string.find(",")
+        street = work_string[: street_end]
+
+        state = work_string[street_end + 1: ]
+
+        temp = []
+        try:
+            temp.append(name)
+        except (UnboundLocalError, NameError):
+            temp.append("--")
+        try:
+            temp.append(street)
+        except (UnboundLocalError, NameError):
+            temp.append("--")
+        try:
+            temp.append(state)
+        except (UnboundLocalError, NameError):
+            temp.append("--")
+        occupants_boxes.append(temp)
+    # print(occupants_boxes,'\n')
+    if len(occupants_boxes)==1:
+        occupants_boxes.append([["|--|"],["|--|"],["|--|"]])
+
+    print("////////////",occupants_boxes)
+    return occupants_boxes
 
 
 def process_pdf(page, reader, page_size):
@@ -762,24 +518,20 @@ def process_pdf(page, reader, page_size):
 
     date = get_date_ocr(page, reader, page_size)
     boxes = get_boxes_ocr(page, reader, page_size)
-    driver_one = get_driver_one_ocr(page, reader, page_size)
-    driver_two = get_driver_two_ocr(page, reader, page_size)
-    occupants = get_occupants_ocr(page, reader, page_size, driver_one, driver_two)
+    occupants = get_occupants_ocr(page, reader, page_size)
 
     case_dict = {
         "Date": date,
         "118a": boxes[0],
-        "118b": boxes[1],
-        "119a": boxes[2],
+        "119a": boxes[1],
+        "118b": boxes[2],
         "119b": boxes[3],
-        "Driver 1": " ".join(driver_one[0:2]),
-        "Address 1": " ".join(driver_one[2:]),
-        "Driver 2": " ".join(driver_two[0:2]),
-        "Address 2": " ".join(driver_two[2:]),
-        "Occupant 1": occupants[0],
-        "Occupant 2": occupants[1],
-        "Occupant 3": occupants[2],
-        "Occupant 4": occupants[3],
+        "Name1": occupants[0][0],
+        "Address1": occupants[0][1],
+        "City/State1": occupants[0][2],
+        "Name2": occupants[1][0],
+        "Address2": occupants[1][1],
+        "City/State2": occupants[1][2],
     }
 
     return case_dict
@@ -796,15 +548,27 @@ def ocr_pdf(pdf):
         page_size = 2
 
     for page in tqdm(pdf):
+        # if page.number == 0:
         if check_pdf(page, reader, page_size):
             case_dict[page.number] = process_pdf(page, reader, page_size)
         else:
             pass
-
+        # else:
+            # continue
     return case_dict
+rows = []
 
 if textpage:  # If there is encoded text within the pdf, it will extract that.
     output = pdf_to_text(pdf)
+    for key, value in output.items():
+        row = {
+            "Name": value['Driver 1'],
+            "Address": value['Address 1'],
+            "City/State": value['Occupant 1'],  # City/State is not provided in the dictionary
+            "118": value['118a'],
+            "119": value['119a']
+        }
+        rows.append(row)
     
 else:  # If there is no text, it will start the OCR.
     output = ocr_pdf(pdf)
@@ -813,20 +577,28 @@ else:  # If there is no text, it will start the OCR.
 # process_obj = Process(name=output_name, pdf_data=pdf)
 
 # loop through the output data and create a dictionary for each row
-rows = []
-for key, value in output.items():
-    row = {
-        "Name": value['Driver 1'],
-        "Address": value['Address 1'],
-        "City/State": value['Occupant 1'],  # City/State is not provided in the dictionary
-        "118": value['118a'],
-        "119": value['119a']
-    }
-    rows.append(row)
+    
+    for key, value in output.items():
+        row1 = {
+            "Name": value['Name1'],
+            "Address": value['Address1'],
+            "City/State": value['City/State1'],  # City/State is not provided in the dictionary
+            "a": value['118a'],
+            "b": value['118b']
+        }
+        rows.append(row1)
+        row2 = {
+            "Name": value['Name2'],
+            "Address": value['Address2'],
+            "City/State": value['City/State2'],  # City/State is not provided in the dictionary
+            "a": value['119a'],
+            "b": value['119b']
+        }
+        rows.append(row2)
     
 import requests
 
-url = ""
+url = "http://64.226.79.139:3002/process"
 
 # Define the data to be sent in the request
 data = {
@@ -835,6 +607,10 @@ data = {
     "user_id":user_id
 }
 
-print("\n", data)
+print("\n############\n", data)
 # Send a POST request with the data
-response = requests.post(url, json=data)
+# response = requests.post(url, json=data)
+# add the rows to the process_obj and save to the database
+# print(rows)
+# process_obj.rows = rows
+# save_to_db(process_obj)
