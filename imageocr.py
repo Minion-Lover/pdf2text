@@ -16,9 +16,13 @@ parser = argparse.ArgumentParser(
     description="Process PDF files of NJPD Crash Reports to return wanted values."
 )
 parser.add_argument("pdf_file", metavar="file", help="path to file")
+parser.add_argument("user_id", metavar="user_id", help="current user id")
 
 args = parser.parse_args()
 file = args.pdf_file
+user_id = args.user_id
+
+
 
 def create_folder(folder_path):
     if not os.path.exists(folder_path):
@@ -40,6 +44,8 @@ pdf = fitz.open(file)
 
 
 page = pdf[0]
+textpage = page.get_text()
+textpagecheck = page.get_text().rstrip().strip().split("\n")
 
 rotation = page.rotation
 page_style = 0
@@ -69,10 +75,6 @@ elif rotation == 270:
     pdfheight = page.rect.width
     barwidth = pdfwidth - 792
 
-# pdfwidth = page.rect.width
-# pdfheight = page.rect.height
-# print(pdfwidth,'-',pdfheight, '-', page.rotation)
-textpage = page.get_text()
 
 folder = "png"
 for filename in os.listdir(folder):
@@ -84,6 +86,329 @@ for filename in os.listdir(folder):
             shutil.rmtree(file_path)
     except Exception as e:
         print("Failed to delete %s. Reason: %s" % (file_path, e))
+
+
+# -------------- TEXT ------------- #
+
+
+def check_for_dash(element):
+    element = element.replace(" ", "")
+
+    setlist = []
+    for n in range(len(element)):
+        setlist.append(element[n])
+
+    setlist = list(set(setlist))
+
+    if len(setlist) == 1:
+        return False
+    else:
+        return True
+
+
+def page_check_text(page):
+    page.set_cropbox(fitz.Rect(0, 0, 120, 50))
+    text = page.get_text().rstrip().split("\n")
+
+    if "1" in text or "3" in text or "97" in text or "96" in text:
+        return True
+    else:
+        return False
+
+# ------------first_style--------------- #
+def get_upper_boxes_text_firststyle(page):
+    page.set_cropbox(fitz.Rect(537, 22, 580, 110))
+
+    text = page.get_text()
+    text = re.sub("[^0-9-\n]", "", text).split("\n")
+    boxes = ["-","-","-","-"]
+    flag1 = 0
+    flag2 = 0
+    for string in text:
+        if string == '118':
+            if flag1 == 0:
+                boxes[0] = text[text.index(string)+1]
+            if flag1 == 1:
+                boxes[1] = text[text.index(string)+1]
+        if string == '119':
+            if flag2 == 0:
+                boxes[2] = text[text.index(string)+1]
+            if flag2 == 1:
+                boxes[3] = text[text.index(string)+1]
+    return boxes
+
+
+def get_driver_text_firststyle(page, driver):
+    if driver == 1:
+        page.set_cropbox(fitz.Rect(53, 148, 285, 230))
+    else:
+        page.set_cropbox(fitz.Rect(293, 150, 545, 224))
+
+    text = page.get_text().rstrip().strip().split("\n")
+    Name_index = 0
+    Street_index = 0
+    City_index = 0
+    State_index = 0
+    Zip_index = 0
+    if any("Driver's" in s or "First Name" in s or "Last Name" in s for s in text):
+        for i in text:
+            if "Driver's" in i or "First Name" in i or "Last Name" in i:
+                Name_index = text.index(i)
+                break
+            else:
+                continue
+    else:
+        Name = "--"
+        
+    if any("Number" in s or "Street" in s for s in text):
+        for i in text:
+            if "Number" in i or "Street" in i:
+                if text.index(i)<Name_index:
+                    continue
+                Street_index = text.index(i)
+                break
+            else:
+                continue
+    else:
+        Street = "--"
+    if any("City" in s for s in text):
+        for i in text:
+            if "City" in i:
+                if text.index(i)<Street_index:
+                    continue
+                City_index = text.index(i)
+                break
+            else:
+                continue
+    else:
+        City = "--"
+    if any("State" in s for s in text):
+        for i in text:
+            if "State" in i:
+                if text.index(i)<City_index:
+                    continue
+                State_index = text.index(i)
+                break
+            else:
+                continue
+    else:
+        State = "--"
+    if any("Zip" in s for s in text):
+        for i in text:
+            if "Zip" in i:
+                if text.index(i)<State_index:
+                    continue
+                Zip_index = text.index(i)
+                break
+            else:
+                continue
+    else:
+        Zip = "--"
+    Name = "--"
+    Street = "--"
+    City = "--"
+    State = "--"
+    if Name_index + 1 < Street_index:
+        Name = text[Name_index+1]
+    if Street_index + 2 < City_index:
+        Street = text[Street_index+1]
+    if City_index + 1 < State_index:
+        City = text[City_index+1]
+    if Zip_index + 1 < len(text):
+        State = text[Zip_index+1]+text[Zip_index+2]
+
+    Address = [Name, Street, City+' '+State]
+    # print(Address,'\n')
+    return Address
+
+
+def process_textpdf(page):
+    case_dict = {}
+    
+    boxes = get_upper_boxes_text_firststyle(page)
+
+    Address1 = get_driver_text_firststyle(page, 1)
+
+    Address2 = get_driver_text_firststyle(page, 2)
+
+
+    case_dict = {
+        "118a": boxes[0],
+        "118b": boxes[1],
+        "119a": boxes[2],
+        "119b": boxes[3],
+        "Name1": Address1[0],
+        "Address1": Address1[1],
+        "City/State1": Address1[2],
+        "Name2": Address2[0],
+        "Address2": Address2[1],
+        "City/State2": Address2[2],
+    }
+    return case_dict
+
+def pdf_to_text_firststyle(pdf):
+    case_dict = {}
+    for n in tqdm(range(len(pdf))):
+
+        page = pdf[n]
+
+        page_check = page_check_text(page)
+
+        if not page_check:
+            continue
+
+        case_dict[page.number] = process_textpdf(page)
+    return case_dict
+
+# ------------------- second_style--------------------#
+
+def get_upper_boxes_text_secondstyle(page):
+    page.set_cropbox(fitz.Rect(537, 22, 580, 110))
+
+    text = page.get_text()
+    # print(text, 'text____')
+    text = re.sub("[^0-9-\n]", "", text).split("\n")
+    # print(text, 'text+____final')
+    # print(len(text), 'text_____length')
+    boxes = list(filter(None, text))
+    # print(len(boxes), 'boxes')
+
+    while len(boxes) < 4:
+        boxes.append("|---|")
+    # print(boxes, 'append boxes')
+
+    
+    return boxes
+
+
+def get_driver_text_secondstyle(page, driver):
+    if driver == 1:
+        page.set_cropbox(fitz.Rect(53, 148, 285, 230))
+    else:
+        page.set_cropbox(fitz.Rect(293, 150, 545, 224))
+
+    text = page.get_text().rstrip().strip().split("\n")
+    if text == [""]:
+        return ["Unknown", "Unknown"]
+
+    if any("unknown" in item.lower() for item in text):
+        driver = ["Unknown", "Unknown"]
+    else:
+        if len(text) > 8:
+            driver = [" ".join([text[7], text[8]]), ", ".join([text[6]])]
+        elif len(text) > 6:
+            driver = [" ".join([text[6], text[3]]), ", ".join([text[5]])]
+        elif len(text) > 5:
+            driver = [" ".join([text[5], text[3]]), ", ".join([text[5]])]
+        elif len(text) > 4:
+            driver = [" ".join([text[4], text[3]]), ", ".join([text[4]])]
+        elif len(text) > 3:
+            driver = [" ".join([text[3], text[2]]), ", ".join([text[3]])]
+        elif len(text) > 2:
+            driver = [" ".join([text[2], text[1]]), ", ".join([text[2]])]
+
+    if isinstance(driver, int):
+        driver = ["----", "----"]  # Assign a default value when driver is an integer
+    else:
+        for n in range(len(driver)):
+            if driver[n].count("-") > 8:
+                driver[n] = "----"
+    return driver
+
+
+def get_occupants_text_secondstyle(page):
+    page.set_cropbox(fitz.Rect(335, 620, 580, 760))
+
+    text = page.get_text().rstrip().split("\n")
+    # print(text, 'text_____occupants')
+
+    occupants = [element for element in text if check_for_dash(element)]
+    
+    occupants = [x + " " + y for x, y in zip(occupants[0::2], occupants[1::2])]
+   
+
+
+
+    while len(occupants) < 4:
+        occupants.append("|---|")
+
+    return occupants if occupants else []
+
+
+def pdf_to_text_secondstyle(pdf):
+
+    case_dict = {}
+    case_count = 0
+    
+    for n in tqdm(range(len(pdf))):
+
+        page = pdf[n]
+
+        page_check = page_check_text(page)
+
+        if not page_check:
+            continue
+
+        case_count += 1
+
+        boxes = get_upper_boxes_text_secondstyle(page)
+
+        driver_one = get_driver_text_secondstyle(page, 1)
+
+        driver_two = get_driver_text_secondstyle(page, 2)
+
+        occupants = get_occupants_text_secondstyle(page)
+
+        case = {
+            "Page Number": n + 1,
+            "118a": "--",
+            "118b": "--",
+            "119a": "--",
+            "119b": "--",
+            "Driver 1": driver_one[0],
+            "Address 1": driver_one[1],
+            "Driver 2": driver_two[0],
+            "Address 2": driver_two[1],
+            "Occupant 1": "--",
+            "Occupant 2": "--",
+            "Occupant 3": "--",
+            "Occupant 4": "--",
+        }
+        if len(occupants) >= 1:
+            case["Occupant 1"] = occupants[0]
+        if len(occupants) >= 2:
+            case["Occupant 2"] = occupants[1]
+    
+        if len(occupants) >= 3:
+            case["Occupant 3"] = occupants[2]
+        if len(occupants) >= 4:
+            case["Occupant 4"] = occupants[3]    
+
+        if len(boxes) >= 7:
+            case7 = case.copy()
+            case7["118a"] = boxes[2] if len(boxes) >= 7 and boxes[2] != "----" else "--"
+            case7["118b"] = boxes[3] if len(boxes) >= 7 and boxes[3] != "----" else "--"
+            case7["119a"] = boxes[4] if len(boxes) >= 7 and boxes[4] != "----" else "--"
+            case7["119b"] = boxes[5] if len(boxes) >= 7 and boxes[5] != "----" else "--"
+            case_dict[case_count] = case7
+
+        elif len(boxes) >= 6:
+            case6 = case.copy()
+            case6["118a"] = boxes[1] if len(boxes) >= 6  and boxes[1] != "----" else "--"
+            case6["118b"] = boxes[2] if len(boxes) >= 6 and boxes[2] != "----" else "--"
+            case6["119a"] = boxes[3] if len(boxes)>= 6 and boxes[3] != "----" else "--"
+            case6["119b"] = boxes[4] if len(boxes) >= 6 and boxes[4] != "----" else "--"
+            case_dict[case_count] = case6
+
+        elif len(boxes) >= 5:
+            case5 = case.copy()
+            case5["118a"] = boxes[0] if len(boxes) >= 5 and boxes[0] != "----" else "--"
+            case5["118b"] = boxes[1] if len(boxes) >= 5 and boxes[1] != "----" else "--"
+            case5["119a"] = boxes[2] if len(boxes) >= 5 and boxes[2] != "----" else "--"
+            case5["119b"] = boxes[3] if len(boxes) >= 5 and boxes[3] != "----" else "--"
+            case_dict[case_count] = case5
+ 
+    return case_dict
 
 #----------------IMAGE---------------#
 
@@ -129,11 +454,8 @@ def get_data_one_ocr(page, reader):
                                decoder="greedy", 
                                detail=0, 
                                paragraph=False,
-                            #    allowlist = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890.,-[]' ",
-                            #    blocklist = '|',
                                width_ths =50,)
   
-    # for x in data_ocr:      print(x, '\n')
 
     name_index = 0
     street_index = 0
@@ -434,11 +756,11 @@ def remove_non_name(text):
 
     if clean_string.endswith('Mo') or clean_string.endswith('Fo') or clean_string.endswith('LM') or clean_string.endswith('LF'):
         clean_string = clean_string[:-2]
-    elif clean_string.endswith('LMK') or clean_string.endswith('LMi') or clean_string.endswith('Loo') or clean_string.endswith('MHz') or clean_string.endswith('Mtz') or clean_string.endswith('Mzu') or clean_string.endswith('hzn'):
+    elif clean_string.endswith('LMK') or clean_string.endswith('LMi') or clean_string.endswith('Loo') or clean_string.endswith('MHz') or clean_string.endswith('Mtz') or clean_string.endswith('Mzu') or clean_string.endswith('hzn') or clean_string.endswith('LMu'):
         clean_string = clean_string[:-3]
     elif clean_string.endswith('LMko') or clean_string.endswith('MHzn'):
         clean_string = clean_string[:-4]
-    elif clean_string.endswith('M') or clean_string.endswith('F'):
+    elif clean_string.endswith('M') or clean_string.endswith('F') or clean_string.endswith('Am') or clean_string.endswith('Bm') or clean_string.endswith('Cm') or clean_string.endswith('Dm') or clean_string.endswith('Em') or clean_string.endswith('Fm') or clean_string.endswith('Gm') or clean_string.endswith('Hm') or clean_string.endswith('Jm') or clean_string.endswith('Km') or clean_string.endswith('Lm') or clean_string.endswith('Mm') or clean_string.endswith('Nm') or clean_string.endswith('Om') or clean_string.endswith('Pm') or clean_string.endswith('Qm') or clean_string.endswith('Rm') or clean_string.endswith('Sm') or clean_string.endswith('Tm') or clean_string.endswith('Um') or clean_string.endswith('Vm') or clean_string.endswith('Wm') or clean_string.endswith('Xm') or clean_string.endswith('Ym') or clean_string.endswith('Zm'):
         clean_string = clean_string[:-1]
     
     return clean_string
@@ -534,35 +856,95 @@ def ocr_pdf(pdf):
 rows = []
 
 def _main():
-    output = ocr_pdf(pdf)
-
-# create a new Process object with the name of the uploaded file and the binary data of the file
-# process_obj = Process(name=output_name, pdf_data=pdf)
-
-# loop through the output data and create a dictionary for each row
-    
-    for key, value in output.items():
-        row1 = {
-            "Name": value['Name1'],
-            "Address": value['Address1'],
-            "City/State": value['City/State1'],  # City/State is not provided in the dictionary
-            "a": value['118a'],
-            "b": value['118b']
-        }
-        rows.append(row1)
-        row2 = {
-            "Name": value['Name2'],
-            "Address": value['Address2'],
-            "City/State": value['City/State2'],  # City/State is not provided in the dictionary
-            "a": value['119a'],
-            "b": value['119b']
-        }
-        rows.append(row2)
+    if textpage:
+        if any("Jersey" in s.lower() or "Police" in s for s in textpagecheck):  # If there is encoded text within the pdf, it will extract that.
+            output = pdf_to_text_firststyle(pdf)
+            # print('@@@@@',output.items(),'@@@@@@')
+            for key, value in output.items():
+                row1 = {
+                    "Name": value['Name1'],
+                    "Address": value['Address1'],
+                    "City/State": value['City/State1'],  # City/State is not provided in the dictionary
+                    "a": value['118a'],
+                    "b": value['118b']
+                }
+                rows.append(row1)
+                row2 = {
+                    "Name": value['Name2'],
+                    "Address": value['Address2'],
+                    "City/State": value['City/State2'],  # City/State is not provided in the dictionary
+                    "a": value['119a'],
+                    "b": value['119b']
+                }
+                rows.append(row2)
+        else:
+            output = pdf_to_text_secondstyle(pdf)
+            for key, value in output.items():
+                row1 = {
+                    "Name": value['Driver 1'],
+                    "Address": value['Address 1'],
+                    "City/State": value['Occupant 1'],  # City/State is not provided in the dictionary
+                    "a": value['118a'],
+                    "b": value['118b']
+                }
+                rows.append(row1)
+                row2 = {
+                    "Name": value['Driver 2'],
+                    "Address": value['Address 2'],
+                    "City/State": value['Occupant 2'],  # City/State is not provided in the dictionary
+                    "a": value['119a'],
+                    "b": value['119b']
+                }
+                rows.append(row2)
+    else: 
+        output = ocr_pdf(pdf)
+        
+        for key, value in output.items():
+            # print('@@@@@',output.items(),'@@@@@@')
+            row1 = {
+                "Name": value['Name1'],
+                "Address": value['Address1'],
+                "City/State": value['City/State1'],  # City/State is not provided in the dictionary
+                "a": value['118a'],
+                "b": value['118b']
+            }
+            rows.append(row1)
+            row2 = {
+                "Name": value['Name2'],
+                "Address": value['Address2'],
+                "City/State": value['City/State2'],  # City/State is not provided in the dictionary
+                "a": value['119a'],
+                "b": value['119b']
+            }
+            rows.append(row2)
 
 
 if __name__ == "__main__":
     _main()
 
+
+######## This is csv saving part #########
+
     my_df = pd.DataFrame(rows)
     my_df.to_csv(f'{output_name}.csv', index=False, header=False)
 
+##########################################
+
+    import requests
+
+    url = "http://64.226.79.139:3002/process"
+
+    # Define the data to be sent in the request
+    data = {
+        "name": output_name,
+        "rows": rows,
+        "user_id":user_id
+    }
+
+    print("\n", data)
+    # Send a POST request with the data
+    response = requests.post(url, json=data)
+    # add the rows to the process_obj and save to the database
+    # print(rows)
+    # process_obj.rows = rows
+    # save_to_db(process_obj)
