@@ -420,7 +420,7 @@ def check_pdf(page, reader):
     pix = page.get_pixmap(dpi=300)
     pix.save("png/pagecheck.png")
     image = cv2.imread(f"png/pagecheck.png")
-    image = cv2.resize(image, None, fx = 4, fy = 4)
+    image = cv2.resize(image, None, fx = 4, fy = 4, interpolation=cv2.INTER_AREA)
 
     pdf_check = reader.readtext(image, decoder="greedy", detail=0, paragraph=False)
     # print(pdf_check)
@@ -843,7 +843,7 @@ def process_pdf(page, reader):
 
 
 def ocr_pdf(pdf):
-    reader = easyocr.Reader(["en"], gpu=False)
+    reader = easyocr.Reader(["en"], gpu=True)
     case_dict = {}
     page = pdf[0]
 
